@@ -1,0 +1,91 @@
+# .gitignore for a Python Streamlit Project
+
+# --- Python ---
+# Virtual Environments
+venv/
+env/
+.venv/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Mypy, Pyre, and other static analysis caches
+.mypy_cache/
+.pyre/
+.pytype/
+
+# --- Streamlit ---
+# Streamlit-specific cache and configuration files
+.streamlit/
+/cache/
+*.uploaded_file_manager.db
+
+# --- Common IDEs / Editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Operating System ---
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+# Thumbnails
+._*
+# Files that might appear on external disks
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# --- Data & Logs ---
+# It's good practice to keep data files out of git.
+# Use wildcards to ignore common data file types.
+*.csv
+*.json
+*.jsonl
+*.log
+*.db
+*.sqlite3
+
+# If you have specific data directories, add them here:
+# data/
+# raw_data/
+# processed_data/
+
+# --- Notebooks ---
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# --- Secrets & Sensitive Info ---
+# Never commit secrets!
+secrets.toml
+*.env
+config.toml
+*.pem
