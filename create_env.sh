@@ -5,7 +5,7 @@ PYTHON_MAJOR_VERSION=$(python -c 'import sys; print(sys.version_info[0])')
 PYTHON_MINOR_VERSION=$(python -c 'import sys; print(sys.version_info[1])')
 
 # 3.11.3 is confirmed stable to build
-if [ $PYTHON_MAJOR_VERSION == 3 ] && [ $PYTHON_MINOR_VERSION == 13 ]
+if [ $PYTHON_MAJOR_VERSION == 3 ]
 then
     if [ -d .venv ]; then
         echo "Virtual environment already exists"

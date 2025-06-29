@@ -42,3 +42,19 @@ def create_updater_prompt(course_text):
     Your Task: Identify core topics, find new developments, and suggest actionable changes.
     Output Format: Structure your suggestions into three distinct Markdown sections: '### 🚀 Suggested Additions', '### ✏️ Suggested Modifications', and '### 🗑️ Suggested Deletions'. For each suggestion, explain *why* the change is necessary.
     """
+
+def create_quiz_creator_prompt(course_text,difficulty_level="Meduim", question_type="Mixed"):
+    """Creates a detailed prompt for the quiz creator feature."""
+    return f"""
+    You are an expert quiz designer. Your task is to create a comprehensive quiz based on the provided course content.
+    Course Content to Base Quiz On:
+    ---
+    {course_text}
+    ---
+    Your Task: Generate a quiz with 10 questions, covering all major topics in the course. Include a mix of question types (multiple choice, true/false, short answer).
+    Quiz Parameters:
+    - Difficulty Level: {difficulty_level}
+    - Question Type: {question_type} 
+    Output Format: Present the quiz in html with clear headings for each question type. 
+    For multiple choice questions, provide four options (A, B, C, D) and indicate the correct answer and make it a well formatted and color correct answer with green.
+    """
