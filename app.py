@@ -417,91 +417,157 @@ def create_styled_pdf(text):
     Generates a PDF file from a Markdown string with native styling
     for headers, lists, bold, italic, and code.
     """
-    pdf = FPDF()
-    pdf.add_page()
-    
-    # Add Unicode font support
     try:
-        # Try to add a Unicode font (DejaVu Sans supports most Unicode characters)
-        pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-        pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf', uni=True)
-        pdf.add_font('DejaVu', 'I', 'DejaVuSans-Oblique.ttf', uni=True)
-        default_font = 'DejaVu'
-        unicode_support = True
-    except:
-        # Fallback to Arial if Unicode fonts are not available
+        pdf = FPDF()
+        pdf.add_page()
+        
+        # Simplified font handling - stick to built-in fonts
+        pdf.set_font('Arial', size=12)
+        unicode_support = False  # Disable Unicode to avoid font issues
         default_font = 'Arial'
-        unicode_support = False
-    
-    pdf.set_font(default_font, size=12)
-    
-    effective_page_width = pdf.w - 2 * pdf.l_margin
+        
+        effective_page_width = pdf.w - 2 * pdf.l_margin
 
-    in_code_block = False
-    for line in text.split('\n'):
-        # Code block handling - FIX: Check for triple backticks
-        if line.strip().startswith('```'):
-            in_code_block = not in_code_block
+        in_code_block = False
+        for line in text.split('\n'):
+            # Code block handling
+            if line.strip().startswith('```'):
+                in_code_block = not in_code_block
+                if in_code_block:
+                    pdf.set_font('Courier', size=10)
+                    pdf.set_fill_color(240, 240, 240)
+                    pdf.ln(2)
+                else:
+                    pdf.set_font('Arial', size=12)
+                    pdf.set_fill_color(255, 255, 255)
+                    pdf.ln(5)
+                continue
+
             if in_code_block:
-                pdf.set_font('Courier' if not unicode_support else default_font, size=10)
-                pdf.set_fill_color(240, 240, 240)
-                pdf.ln(2)
-            else:
-                pdf.set_font(default_font, size=12)
-                pdf.set_fill_color(255, 255, 255)
+                pdf.set_x(pdf.l_margin)
+                # Ensure safe encoding for code blocks
+                safe_line = line.encode('latin-1', 'replace').decode('latin-1')
+                pdf.multi_cell(effective_page_width, 5, safe_line, border=0, fill=True)
+                continue
+
+            # Other markdown handling
+            line = line.strip()
+            if not line:
                 pdf.ln(5)
-            continue
+                continue
 
-        if in_code_block:
-            # Fix: Ensure proper positioning for code block lines
-            pdf.set_x(pdf.l_margin)  # Reset X position to left margin
-            safe_line = line if unicode_support else line.encode('latin-1', 'replace').decode('latin-1')
-            pdf.multi_cell(effective_page_width, 5, safe_line, border=0, fill=True)
-            continue
+            # Safe text encoding for all content
+            if line.startswith('# '):
+                pdf.set_font('Arial', 'B', 16)
+                safe_text = line[2:].strip().encode('latin-1', 'replace').decode('latin-1')
+                pdf.multi_cell(effective_page_width, 8, safe_text)
+                pdf.ln(4)
+            elif line.startswith('## '):
+                pdf.set_font('Arial', 'B', 14)
+                safe_text = line[3:].strip().encode('latin-1', 'replace').decode('latin-1')
+                pdf.multi_cell(effective_page_width, 7, safe_text)
+                pdf.ln(3)
+            elif line.startswith('### '):
+                pdf.set_font('Arial', 'B', 12)
+                safe_text = line[4:].strip().encode('latin-1', 'replace').decode('latin-1')
+                pdf.multi_cell(effective_page_width, 6, safe_text)
+                pdf.ln(2)
+            elif line.startswith(('* ', '- ')):
+                pdf.set_x(pdf.l_margin)
+                initial_x = pdf.get_x()
+                pdf.write(5, '- ')
+                process_pdf_inline_styles_safe(pdf, line[2:].strip(), initial_x + 5)
+                pdf.ln()
+            else:
+                pdf.set_x(pdf.l_margin)
+                process_pdf_inline_styles_safe(pdf, line, pdf.l_margin)
+                pdf.ln()
 
-        # Other markdown handling
-        line = line.strip()
-        if not line:
-            pdf.ln(5)
-            continue
+        pdf_fp = BytesIO()
+        pdf.output(pdf_fp)
+        pdf_fp.seek(0)
+        return pdf_fp.getvalue()
+        
+    except Exception as e:
+        # If PDF generation fails, create a simple fallback PDF
+        st.error(f"PDF generation failed: {e}")
+        return create_fallback_pdf(text)
 
-        if line.startswith('# '):
-            pdf.set_font(default_font, 'B', 16)
-            safe_text = line[2:].strip() if unicode_support else line[2:].strip().encode('latin-1', 'replace').decode('latin-1')
-            pdf.multi_cell(effective_page_width, 8, safe_text)
-            pdf.ln(4)
-        elif line.startswith('## '):
-            pdf.set_font(default_font, 'B', 14)
-            safe_text = line[3:].strip() if unicode_support else line[3:].strip().encode('latin-1', 'replace').decode('latin-1')
-            pdf.multi_cell(effective_page_width, 7, safe_text)
-            pdf.ln(3)
-        elif line.startswith('### '):
-            pdf.set_font(default_font, 'B', 12)
-            safe_text = line[4:].strip() if unicode_support else line[4:].strip().encode('latin-1', 'replace').decode('latin-1')
-            pdf.multi_cell(effective_page_width, 6, safe_text)
-            pdf.ln(2)
-        elif line.startswith(('* ', '- ')):
-            pdf.set_x(pdf.l_margin)  # Ensure proper positioning for list items
-            initial_x = pdf.get_x()
+def process_pdf_inline_styles_safe(pdf, line, indent):
+    """Simplified version of inline style processing with better error handling"""
+    try:
+        parts = re.split(r'(\*\*.*?\*\*|\*.*?\*|\`.*?\`)', line)
+        for part in parts:
+            if not part: 
+                continue
             
-            # Use a safe bullet character based on font support
-            bullet_char = '•' if unicode_support else '- '
-            safe_bullet = bullet_char if unicode_support else bullet_char.encode('latin-1', 'replace').decode('latin-1')
+            style = ''
+            font = 'Arial'
+            size = 12
             
-            pdf.write(5, safe_bullet)
-            # FIX: Call with correct parameters
-            process_pdf_inline_styles(pdf, line[2:].strip(), initial_x + 5, unicode_support, default_font)
-            pdf.ln()
-        else:
-            pdf.set_x(pdf.l_margin)  # Ensure proper positioning for regular paragraphs
-            # FIX: Call with correct parameters
-            process_pdf_inline_styles(pdf, line, pdf.l_margin, unicode_support, default_font)
-            pdf.ln()
+            if part.startswith('**') and part.endswith('**'):
+                content = part[2:-2]
+                style = 'B'
+            elif part.startswith('*') and part.endswith('*'):
+                content = part[1:-1]
+                style = 'I'
+            elif part.startswith('`') and part.endswith('`'):
+                content = part[1:-1]
+                font = 'Courier'
+                size = 10
+            else:
+                content = part
+            
+            # Ensure safe encoding
+            safe_content = content.encode('latin-1', 'replace').decode('latin-1')
+            
+            pdf.set_font(font, style, size)
+            
+            # Simple word wrapping
+            words = safe_content.split(' ')
+            for word in words:
+                word_to_write = word + ' '
+                word_width = pdf.get_string_width(word_to_write)
+                if pdf.get_x() + word_width > pdf.w - pdf.r_margin:
+                    pdf.ln()
+                    pdf.set_x(indent)
+                pdf.write(5, word_to_write)
+        
+        pdf.set_font('Arial', '', 12)
+        
+    except Exception as e:
+        # Fallback to simple text if styling fails
+        safe_text = line.encode('latin-1', 'replace').decode('latin-1')
+        pdf.set_font('Arial', '', 12)
+        pdf.multi_cell(pdf.w - 2 * pdf.l_margin, 5, safe_text)
 
-    pdf_fp = BytesIO()
-    pdf.output(pdf_fp)
-    pdf_fp.seek(0)
-    return pdf_fp.getvalue()
+def create_fallback_pdf(text):
+    """Create a simple PDF if the styled version fails"""
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font('Arial', size=12)
+        
+        # Simple text conversion - remove markdown
+        clean_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)  # Remove bold
+        clean_text = re.sub(r'\*([^*]+)\*', r'\1', clean_text)  # Remove italic
+        clean_text = re.sub(r'`([^`]+)`', r'\1', clean_text)  # Remove code
+        clean_text = re.sub(r'^#+\s*', '', clean_text, flags=re.MULTILINE)  # Remove headers
+        
+        # Encode safely
+        safe_text = clean_text.encode('latin-1', 'replace').decode('latin-1')
+        
+        pdf.multi_cell(pdf.w - 2 * pdf.l_margin, 5, safe_text)
+        
+        pdf_fp = BytesIO()
+        pdf.output(pdf_fp)
+        pdf_fp.seek(0)
+        return pdf_fp.getvalue()
+        
+    except Exception as e:
+        st.error(f"Even fallback PDF generation failed: {e}")
+        return b"PDF generation failed"
+
 
 def create_html_pdf(html_text):
     """
