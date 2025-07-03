@@ -80,4 +80,6 @@ def create_quiz_creator_prompt(course_text, difficulty_level="Medium", question_
     For true/false questions, indicate the correct answer with **bold** formatting.
     For short answer questions, write the correct answer with **bold** formatting.    
     Use only standard Markdown formatting - no HTML tags or custom styling.
+    For all questions explain the correct answer in a separate paragraph after the question and why other options are incorrect.
+    Add a sperator line after each question to separate them clearly.
     """
