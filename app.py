@@ -38,7 +38,47 @@ except Exception as e:
     st.stop()
 
 # --- Helper functions for file creation with Markdown parsing ---
-
+def create_descriptive_filename(content_type, user_params=None, content_text="", file_extension="pdf"):
+    """Create descriptive filenames based on content and user selections"""
+    from datetime import datetime
+    
+    # Extract course topic/title if possible
+    topic = "Course"
+    if content_text:
+        lines = content_text.split('\n')
+        for line in lines:
+            if line.strip().startswith('# '):
+                topic = line.strip()[2:].strip()
+                # Clean for filename
+                topic = re.sub(r'[^\w\s-]', '', topic)
+                topic = re.sub(r'[-\s]+', '_', topic)[:30]
+                break
+    
+    # Build filename parts
+    parts = [topic]
+    
+    if user_params:
+        if 'audience' in user_params:
+            audience_short = user_params['audience'].split()[0]  # "High", "Undergraduate", etc.
+            parts.append(audience_short)
+        
+        if 'length' in user_params:
+            length_short = user_params['length'].split()[0]  # "Quick", "Moderate", "Detailed"
+            parts.append(length_short)
+            
+        if 'quiz_type' in user_params:
+            quiz_type_short = user_params['quiz_type'].replace(' ', '')
+            parts.append(quiz_type_short)
+    
+    parts.append(content_type)
+    
+    # Add timestamp for uniqueness
+    timestamp = datetime.now().strftime("%m%d_%H%M")
+    parts.append(timestamp)
+    
+    filename = "_".join(parts) + f".{file_extension}"
+    return filename
+    
 def create_styled_docx(text):
     """Generates a DOCX file from a Markdown string with styling for headers, lists, and code."""
     doc = docx.Document()
@@ -1117,22 +1157,40 @@ with tab1:
                 
                 # Quiz download buttons
                 if DOWNLOAD_ENABLED:
+                    quiz_params = {
+                        'audience': target_audience,
+                        'quiz_type': quiz_type,
+                        'difficulty': quiz_difficulty
+                    }
+                    
                     quiz_dl_col_1, quiz_dl_col_2, quiz_dl_col_3 = st.columns([2,2,1])
                     with quiz_dl_col_1:
                         quiz_pdf_bytes = create_styled_pdf(st.session_state.generated_quiz_text)
+                        quiz_filename = create_descriptive_filename(
+                            "Quiz", 
+                            quiz_params, 
+                            st.session_state.generated_quiz_text, 
+                            "pdf"
+                        )
                         st.download_button(
                             label="⬇️ PDF",
                             data=quiz_pdf_bytes,
-                            file_name="generated_course_quiz.pdf",
+                            file_name=quiz_filename,
                             mime="application/pdf",
                             use_container_width=True
                         )
                     with quiz_dl_col_2:
                         quiz_docx_bytes = create_styled_docx(st.session_state.generated_quiz_text)
+                        quiz_docx_filename = create_descriptive_filename(
+                            "Quiz", 
+                            quiz_params, 
+                            st.session_state.generated_quiz_text, 
+                            "docx"
+                        )
                         st.download_button(
                             label="⬇️ DOCX",
                             data=quiz_docx_bytes,
-                            file_name="generated_course_quiz.docx",
+                            file_name=quiz_docx_filename,
                             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                             use_container_width=True
                         )
@@ -1149,22 +1207,40 @@ with tab1:
 
             # Add download buttons if libraries are installed
             if DOWNLOAD_ENABLED:
+                user_params = {
+                    'audience': target_audience,
+                    'length': course_length,
+                }
+                
                 dl_col_1, dl_col_2, dl_col_3 = st.columns([2,2,2])
                 with dl_col_1:
                     pdf_bytes = create_styled_pdf(st.session_state.generated_course_text)
+                    course_filename = create_descriptive_filename(
+                        "Course", 
+                        user_params, 
+                        st.session_state.generated_course_text, 
+                        "pdf"
+                    )
                     st.download_button(
                         label="⬇️ Download as PDF",
                         data=pdf_bytes,
-                        file_name="generated_course.pdf",
+                        file_name=course_filename,
                         mime="application/pdf",
                         use_container_width=True
                     )
+                
                 with dl_col_2:
                     docx_bytes = create_styled_docx(st.session_state.generated_course_text)
+                    course_docx_filename = create_descriptive_filename(
+                        "Course", 
+                        user_params, 
+                        st.session_state.generated_course_text, 
+                        "docx"
+                    )
                     st.download_button(
                         label="⬇️ Download as DOCX",
                         data=docx_bytes,
-                        file_name="generated_course.docx",
+                        file_name=course_docx_filename,
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                         use_container_width=True
                     )
