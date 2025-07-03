@@ -1,11 +1,23 @@
 import streamlit as st
 import google.generativeai as genai
 
-
 # Ensure st is available globally before importing helpers
 try:
     from helpers.text_utils import extract_text_from_files
     from helpers import prompt_utils
+except ImportError:
+    # Creating dummy functions if helpers are not available
+    # This allows the app to run without the helper files for styling purposes.
+    st.warning("Helper modules (helpers.text_utils, helpers.prompt_utils) not found. Using dummy functions. App functionality will be limited.")
+    def extract_text_from_files(files):
+        return " ".join([file.name for file in files])
+    class PromptUtils:
+        def create_generation_prompt(self, *args): return "Dummy generation prompt"
+        def create_validation_prompt(self, *args): return "Dummy validation prompt"
+        def create_updater_prompt(self, *args): return "Dummy updater prompt"
+        def create_quiz_creator_prompt(self, *args): return "Dummy quiz prompt"
+    prompt_utils = PromptUtils()
+
 except NameError as e:
     st.error(f"Import error in helper modules: {e}")
     st.error("Make sure all helper modules that use 'st' have 'import streamlit as st' at the top")
@@ -15,89 +27,146 @@ except Exception as e:
     st.stop()
 
 # Page Configuration
-st.set_page_config(layout="wide", page_title="AI Instructional Design Assistant")
+st.set_page_config(layout="wide", page_title="RoboGarden AI")
 
-# --- Styling (Inspired by the uploaded image) ---
+# --- Styling (Inspired by the uploaded images) ---
 def load_css():
+    """
+    Loads custom CSS to style the Streamlit application according to the RoboGarden theme.
+    Colors are extracted from the provided banner.jpg and colors.png.
+    - Canary Yellow (#ffc300)
+    - Blue (#3f7cac)
+    - Green (#8bc53f)
+    - Red (#e53238)
+    - Light Background (#ecffd6)
+    """
     css = """
     <style>
-        /* Import a playful, rounded font */
-        @import url('https://fonts.googleapis.com/css2?family=Carter+One&display=swap');
+        /* Import a playful, rounded font that matches the banner's style */
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
 
         /* Main app background */
         .stApp {
-            background-color: #FAF3E0; /* Sandy beige */
+            background-color: #ecffd6; /* A clean, light background */
+        }
+        
+        /* Add the banner image to the top of the main content area */
+        .main .block-container:first-child::before {
+            content: '';
+            display: block;
+            height: 200px; /* Adjust height as needed */
+            background-size: cover;
+            background-position: center;
+            border-radius: 10px;
+            margin-bottom: 2rem;
         }
 
-        /* Titles and headers */
-        h1, h2, h3 {
-            font-family: 'Carter One', cursive;
-            color: #5D4037; /* Dark earthy brown */
+        /* Main title styling */
+        .main h1:first-of-type {
+            font-family: 'Fredoka One', cursive;
+            color: #8bc53f; /* Robo-Green from logo */
+        }
+
+        /* Other titles and headers */
+        h1:not(.main h1:first-of-type), h2, h3 {
+            font-family: 'Fredoka One', cursive;
+            color: #3f7cac; /* Robo-Blue from logo */
         }
 
         /* Buttons */
         .stButton>button {
-            border: 2px solid #5D4037;
-            border-radius: 20px;
-            color: #5D4037;
-            background-color: #FFD700; /* Gold/Yellow */
-            padding: 10px 20px;
+            font-family: 'Fredoka One', cursive;
+            border: 2px solid #ffc300; /* Canary-Yellow from logo */
+            border-radius: 25px;
+            color: #ffffff;
+            background-color: #ffc300; /* Canary-Yellow from logo */
+            padding: 12px 28px;
+            font-size: 16px;
             font-weight: bold;
+            text-transform: uppercase;
             transition: all 0.3s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .stButton>button:hover {
-            transform: scale(1.05);
-            background-color: #FFA500; /* Orange */
+            transform: translateY(-2px);
+            background-color: #8bc53f; /* Robo-Green from logo */
             color: white;
-            border-color: #FFA500;
+            border-color: #8bc53f;
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
         }
 
         /* Tabs styling */
         .stTabs [data-baseweb="tab-list"] {
-            gap: 24px;
+            gap: 2px; /* Reduce gap between tabs */
+            border-bottom: 3px solid #3f7cac; /* Blue underline for the tab bar */
         }
         .stTabs [data-baseweb="tab"] {
             height: 50px;
             white-space: pre-wrap;
-            background-color: #FDF5E6;
+            background-color: #eaf4fc; /* Lighter Blue Accent */
             border-radius: 8px 8px 0px 0px;
             gap: 10px;
-            padding-top: 10px;
-            padding-bottom: 10px;
-            color: #5D4037 !important;
+            padding: 10px 20px;
+            color: #3f7cac !important;
+            font-family: 'Fredoka One', cursive;
+            margin: 0;
         }
         .stTabs [aria-selected="true"] {
-            background-color: #00CED1; /* Cyan */
+            background-color: #3f7cac; /* Robo-Blue */
             color: white !important;
             font-weight: bold;
         }
         
-        /* Sidebar styling */
-        .stSidebar {
-            background-color: #FDF5E6;
-            border-right: 2px solid #EAE0C8;
+        /* Sidebar/Column styling for controls */
+        div[data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
+             background-color: #fff9e6; /* Light Yellow to match buttons */
+             border-radius: 10px;
+             padding: 20px;
         }
 
         /* Main content area styling */
         .main .block-container {
             padding-top: 2rem;
         }
+        
+        /* Success/Info/Warning boxes */
+        .stAlert {
+            border-radius: 10px;
+            border-width: 2px;
+        }
+        
+        /* Style for success messages to use the green color */
+        .stAlert[data-baseweb="notification-positive"] {
+            border-color: #8bc53f;
+        }
+        
+        /* Style for warning messages to use the red color */
+        .stAlert[data-baseweb="notification-negative"] {
+             border-color: #e53238;
+        }
+
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
+
 load_css()
 
+try:
+    st.image("static/images/banner2.png", use_container_width=True)
+except FileNotFoundError:
+    st.info("Banner image not found. Please add banner.jpg to the root directory.")
+
 # --- App Header ---
-st.title("AI Instructional Design Assistant ✨")
+st.title(" AI Content Generator 🤖")
 st.write("Your creative partner for building amazing educational content!")
 
 # --- API Key Check and Model Initialization ---
 try:
-    api_key = st.secrets["GOOGLE_API_KEY"]
-    if not api_key:
-        st.error("API key not found. Please set your GOOGLE_API_KEY in Streamlit secrets.")
-        st.stop()
+    # Use a dummy key if not found in secrets for graceful failure
+    api_key = st.secrets.get("GOOGLE_API_KEY", "DUMMY_KEY_FOR_UI_DISPLAY")
+    if api_key == "DUMMY_KEY_FOR_UI_DISPLAY":
+        st.warning("API key not found. Please set your GOOGLE_API_KEY in Streamlit secrets. App is in read-only mode.")
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-1.5-flash-latest')
 except Exception as e:
