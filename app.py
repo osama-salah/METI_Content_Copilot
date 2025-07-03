@@ -1,5 +1,16 @@
 import streamlit as st
 import google.generativeai as genai
+from io import BytesIO
+import re
+
+# --- Optional dependencies for download functionality ---
+try:
+    from fpdf import FPDF
+    import docx
+    from docx.shared import Pt
+    DOWNLOAD_ENABLED = True
+except ImportError:
+    DOWNLOAD_ENABLED = False
 
 # Ensure st is available globally before importing helpers
 try:
@@ -26,8 +37,308 @@ except Exception as e:
     st.error(f"Unexpected import error: {e}")
     st.stop()
 
+# --- Helper functions for file creation with Markdown parsing ---
+
+def create_styled_docx(text):
+    """Generates a DOCX file from a Markdown string with styling for headers, lists, and code."""
+    doc = docx.Document()
+    in_code_block = False
+    code_block_started = False  # Track if we just started a code block
+    
+    for line in text.split('\n'):
+        # Code block handling
+        if line.strip().startswith('```'):
+            in_code_block = not in_code_block
+            if in_code_block:
+                # Only add spacing before code block if the previous element wasn't empty
+                code_block_started = True
+            else:
+                # Add some spacing after code block
+                doc.add_paragraph()
+                code_block_started = False
+            continue
+
+        if in_code_block:
+            # For code blocks, add paragraph with shaded background
+            p = doc.add_paragraph(line)
+            p.style = 'No Spacing'
+            
+            # Set font for code
+            if p.runs:
+                font = p.runs[0].font
+            else:
+                run = p.add_run('')
+                font = run.font
+            font.name = 'Courier New'
+            font.size = Pt(10)
+            
+            # Add shaded background to the paragraph
+            from docx.oxml.shared import qn
+            from docx.oxml import parse_xml
+            
+            # Create shading element with light gray background
+            shading_elm = parse_xml(r'<w:shd {} w:fill="F0F0F0"/>'.format(
+                'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+            ))
+            p._element.get_or_add_pPr().append(shading_elm)
+            
+            # Add border around code block paragraphs
+            from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+            p.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+            
+            # Set paragraph spacing for code blocks
+            paragraph_format = p.paragraph_format
+            paragraph_format.left_indent = Pt(12)  # Slight indentation
+            paragraph_format.right_indent = Pt(12)
+            
+            # Only add space before the first line of the code block
+            if code_block_started:
+                paragraph_format.space_before = Pt(6)
+                code_block_started = False
+            else:
+                paragraph_format.space_before = Pt(2)
+            
+            paragraph_format.space_after = Pt(2)
+            
+            continue
+
+        # Other markdown handling
+        line = line.strip()
+        if line.startswith('# '):
+            doc.add_heading(line[2:], level=1)
+        elif line.startswith('## '):
+            doc.add_heading(line[3:], level=2)
+        elif line.startswith('### '):
+            doc.add_heading(line[4:], level=3)
+        elif line.startswith(('* ', '- ')):
+            p = doc.add_paragraph(style='List Bullet')
+            # Handle inline styles (bold, italic, code)
+            parts = re.split(r'(\*\*.*?\*\*|\*.*?\*|\`.*?\`)', line[2:])
+            for part in parts:
+                if not part: continue
+                if part.startswith('**') and part.endswith('**'):
+                    p.add_run(part[2:-2]).bold = True
+                elif part.startswith('*') and part.endswith('*'):
+                    p.add_run(part[1:-1]).italic = True
+                elif part.startswith('`') and part.endswith('`'):
+                    run = p.add_run(part[1:-1])
+                    run.font.name = 'Courier New'
+                    # Add light gray background for inline code
+                    from docx.oxml.shared import qn
+                    from docx.oxml import parse_xml
+                    shading_elm = parse_xml(r'<w:shd {} w:fill="E8E8E8"/>'.format(
+                        'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+                    ))
+                    run._element.get_or_add_rPr().append(shading_elm)
+                else:
+                    p.add_run(part)
+        elif line:
+            p = doc.add_paragraph()
+            # Handle inline styles (bold, italic, code)
+            parts = re.split(r'(\*\*.*?\*\*|\*.*?\*|\`.*?\`)', line)
+            for part in parts:
+                if not part: continue
+                if part.startswith('**') and part.endswith('**'):
+                    p.add_run(part[2:-2]).bold = True
+                elif part.startswith('*') and part.endswith('*'):
+                    p.add_run(part[1:-1]).italic = True
+                elif part.startswith('`') and part.endswith('`'):
+                    run = p.add_run(part[1:-1])
+                    run.font.name = 'Courier New'
+                    # Add light gray background for inline code
+                    from docx.oxml.shared import qn
+                    from docx.oxml import parse_xml
+                    shading_elm = parse_xml(r'<w:shd {} w:fill="E8E8E8"/>'.format(
+                        'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+                    ))
+                    run._element.get_or_add_rPr().append(shading_elm)
+                else:
+                    p.add_run(part)
+
+    doc_fp = BytesIO()
+    doc.save(doc_fp)
+    doc_fp.seek(0)
+    return doc_fp.getvalue()
+
+
+
+def process_pdf_inline_styles(pdf, line, indent):
+    """Helper to process a line with inline markdown for PDF `write` method, handling wrapping."""
+    parts = re.split(r'(\*\*.*?\*\*|\*.*?\*|\`.*?\`)', line)
+    for part in parts:
+        if not part: continue
+        
+        style = ''
+        font = 'Arial'
+        size = 12
+        if part.startswith('**') and part.endswith('**'):
+            content = part[2:-2]
+            style = 'B'
+        elif part.startswith('*') and part.endswith('*'):
+            content = part[1:-1]
+            style = 'I'
+        elif part.startswith('`') and part.endswith('`'):
+            content = part[1:-1]
+            font = 'Courier'
+            style = ''
+            size = 10
+        else:
+            content = part
+        
+        pdf.set_font(font, style, size)
+        
+        # Manual word wrapping for the `write` method
+        words = content.split(' ')
+        for word in words:
+            word_to_write = word + ' '
+            word_width = pdf.get_string_width(word_to_write)
+            if pdf.get_x() + word_width > pdf.w - pdf.r_margin:
+                pdf.ln()
+                pdf.set_x(indent) # Re-apply indent for wrapped line
+            pdf.write(5, word_to_write.encode('latin-1', 'replace').decode('latin-1'))
+    
+    pdf.set_font('Arial', '', 12) # Reset font at the end of the line
+
+def create_styled_pdf(text):
+    """
+    Generates a PDF file from a Markdown string with native styling
+    for headers, lists, bold, italic, and code.
+    """
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Add Unicode font support
+    try:
+        # Try to add a Unicode font (DejaVu Sans supports most Unicode characters)
+        pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+        pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf', uni=True)
+        pdf.add_font('DejaVu', 'I', 'DejaVuSans-Oblique.ttf', uni=True)
+        default_font = 'DejaVu'
+        unicode_support = True
+    except:
+        # Fallback to Arial if Unicode fonts are not available
+        default_font = 'Arial'
+        unicode_support = False
+    
+    pdf.set_font(default_font, size=12)
+    
+    effective_page_width = pdf.w - 2 * pdf.l_margin
+
+    in_code_block = False
+    for line in text.split('\n'):
+        # Code block handling
+        if line.strip().startswith('```'):
+            in_code_block = not in_code_block
+            if in_code_block:
+                pdf.set_font('Courier' if not unicode_support else default_font, size=10)
+                pdf.set_fill_color(240, 240, 240)
+                pdf.ln(2)
+            else:
+                pdf.set_font(default_font, size=12)
+                pdf.set_fill_color(255, 255, 255)
+                pdf.ln(5)
+            continue
+
+        if in_code_block:
+            # Fix: Ensure proper positioning for code block lines
+            pdf.set_x(pdf.l_margin)  # Reset X position to left margin
+            safe_line = line if unicode_support else line.encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(effective_page_width, 5, safe_line, border=0, fill=True)
+            continue
+
+        # Other markdown handling
+        line = line.strip()
+        if not line:
+            pdf.ln(5)
+            continue
+
+        if line.startswith('# '):
+            pdf.set_font(default_font, 'B', 16)
+            safe_text = line[2:].strip() if unicode_support else line[2:].strip().encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(effective_page_width, 8, safe_text)
+            pdf.ln(4)
+        elif line.startswith('## '):
+            pdf.set_font(default_font, 'B', 14)
+            safe_text = line[3:].strip() if unicode_support else line[3:].strip().encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(effective_page_width, 7, safe_text)
+            pdf.ln(3)
+        elif line.startswith('### '):
+            pdf.set_font(default_font, 'B', 12)
+            safe_text = line[4:].strip() if unicode_support else line[4:].strip().encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(effective_page_width, 6, safe_text)
+            pdf.ln(2)
+        elif line.startswith(('* ', '- ')):
+            pdf.set_x(pdf.l_margin)  # Ensure proper positioning for list items
+            initial_x = pdf.get_x()
+            
+            # Use a safe bullet character based on font support
+            bullet_char = '•' if unicode_support else '- '
+            safe_bullet = bullet_char if unicode_support else bullet_char.encode('latin-1', 'replace').decode('latin-1')
+            
+            pdf.write(5, safe_bullet)
+            process_pdf_inline_styles(pdf, line[2:].strip(), initial_x + 5, unicode_support, default_font)
+            pdf.ln()
+        else:
+            pdf.set_x(pdf.l_margin)  # Ensure proper positioning for regular paragraphs
+            process_pdf_inline_styles(pdf, line, pdf.l_margin, unicode_support, default_font)
+            pdf.ln()
+
+    pdf_fp = BytesIO()
+    pdf.output(pdf_fp)
+    pdf_fp.seek(0)
+    return pdf_fp.getvalue()
+
+
+
+def process_pdf_inline_styles(pdf, line, indent, unicode_support=False, default_font='Arial'):
+    """Helper to process a line with inline markdown for PDF `write` method, handling wrapping."""
+    parts = re.split(r'(\*\*.*?\*\*|\*.*?\*|\`.*?\`)', line)
+    for part in parts:
+        if not part: continue
+        
+        style = ''
+        font = default_font
+        size = 12
+        if part.startswith('**') and part.endswith('**'):
+            content = part[2:-2]
+            style = 'B'
+        elif part.startswith('*') and part.endswith('*'):
+            content = part[1:-1]
+            style = 'I'
+        elif part.startswith('`') and part.endswith('`'):
+            content = part[1:-1]
+            font = 'Courier' if not unicode_support else default_font
+            style = ''
+            size = 10
+        else:
+            content = part
+        
+        pdf.set_font(font, style, size)
+        
+        # Handle Unicode encoding
+        safe_content = content if unicode_support else content.encode('latin-1', 'replace').decode('latin-1')
+        
+        # Manual word wrapping for the `write` method
+        words = safe_content.split(' ')
+        for word in words:
+            word_to_write = word + ' '
+            word_width = pdf.get_string_width(word_to_write)
+            if pdf.get_x() + word_width > pdf.w - pdf.r_margin:
+                pdf.ln()
+                pdf.set_x(indent)
+            pdf.write(5, word_to_write)
+    
+    pdf.set_font(default_font, '', 12)
+
+
+
 # Page Configuration
-st.set_page_config(layout="wide", page_title="RoboGarden AI")
+st.set_page_config(layout="wide", page_title="RoboGarden AI Content Creator")
+
+# --- Initialize Session State ---
+if 'generated_course_text' not in st.session_state:
+    st.session_state.generated_course_text = ""
+
 
 # --- Styling (Inspired by the uploaded images) ---
 def load_css():
@@ -50,17 +361,6 @@ def load_css():
             background-color: #ecffd6; /* A clean, light background */
         }
         
-        /* Add the banner image to the top of the main content area */
-        .main .block-container:first-child::before {
-            content: '';
-            display: block;
-            height: 200px; /* Adjust height as needed */
-            background-size: cover;
-            background-position: center;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-        }
-
         /* Main title styling */
         .main h1:first-of-type {
             font-family: 'Fredoka One', cursive;
@@ -126,7 +426,7 @@ def load_css():
 
         /* Main content area styling */
         .main .block-container {
-            padding-top: 2rem;
+            padding-top: 1rem; /* Reduced padding */
         }
         
         /* Success/Info/Warning boxes */
@@ -149,16 +449,18 @@ def load_css():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-
 load_css()
+if not DOWNLOAD_ENABLED:
+    st.warning("Please install `fpdf2` and `python-docx` to enable download functionality (`pip install fpdf2 python-docx`).")
+
 
 try:
     st.image("static/images/banner2.png", use_container_width=True)
-except FileNotFoundError:
-    st.info("Banner image not found. Please add banner.jpg to the root directory.")
+except Exception:
+    st.info("Banner image not found. Please add banner2.png to the static/images directory.")
 
 # --- App Header ---
-st.title(" AI Content Generator 🤖")
+st.title("AI Content Generator 🤖")
 st.write("Your creative partner for building amazing educational content!")
 
 # --- API Key Check and Model Initialization ---
@@ -212,17 +514,51 @@ with tab1:
                             if raw_text.strip():
                                 prompt = prompt_utils.create_generation_prompt(raw_text, course_length, target_audience, course_tone)
                                 response = model.generate_content(prompt, request_options={'timeout': 600})
-                                st.success("YEAAH! Your course is ready!")
-                                st.markdown(response.text)
+                                st.session_state.generated_course_text = response.text # Save to session state
                             else:
                                 st.warning("HMM! Could not extract text from the uploaded files. Please check the files and try again.")
+                                st.session_state.generated_course_text = ""
                         except Exception as e:
                             st.error(f"An error occurred during generation: {e}")
+                            st.session_state.generated_course_text = ""
             else:
                 st.warning("Please upload at least one document to start building.")
     
     with col2:
-        st.info("Your generated course will appear here once you click the generate button.")
+        if not st.session_state.generated_course_text:
+            st.info("Your generated course will appear here once you click the generate button.")
+        else:
+            st.success("YEAAH! Your course is ready!")
+            st.markdown(st.session_state.generated_course_text) # Display from session state
+            
+            st.markdown("---") # Separator
+
+            # Add download buttons if libraries are installed
+            if DOWNLOAD_ENABLED:
+                dl_col_1, dl_col_2, dl_col_3 = st.columns([2,2,2])
+                with dl_col_1:
+                    pdf_bytes = create_styled_pdf(st.session_state.generated_course_text)
+                    st.download_button(
+                        label="⬇️ Download as PDF",
+                        data=pdf_bytes,
+                        file_name="generated_course.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                with dl_col_2:
+                    docx_bytes = create_styled_docx(st.session_state.generated_course_text)
+                    st.download_button(
+                        label="⬇️ Download as DOCX",
+                        data=docx_bytes,
+                        file_name="generated_course.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True
+                    )
+            
+            # Button to clear the state and start over
+            if st.button("Generate New Course", use_container_width=False):
+                st.session_state.generated_course_text = ""
+                st.rerun()
 
 
 # --- TAB 2: Pedagogical Proofreader ---
