@@ -43,7 +43,7 @@ def create_updater_prompt(course_text):
     Output Format: Structure your suggestions into three distinct Markdown sections: '### 🚀 Suggested Additions', '### ✏️ Suggested Modifications', and '### 🗑️ Suggested Deletions'. For each suggestion, explain *why* the change is necessary.
     """
 
-def create_quiz_creator_prompt(course_text,difficulty_level="Meduim", question_type="Mixed"):
+def create_quiz_creator_prompt(course_text, difficulty_level="Medium", question_type="Mixed"):
     """Creates a detailed prompt for the quiz creator feature."""
     return f"""
     You are an expert quiz designer. Your task is to create a comprehensive quiz based on the provided course content.
@@ -55,6 +55,31 @@ def create_quiz_creator_prompt(course_text,difficulty_level="Meduim", question_t
     Quiz Parameters:
     - Difficulty Level: {difficulty_level}
     - Question Type: {question_type} 
-    Output Format: Present the quiz in html with clear headings for each question type. 
-    For multiple choice questions, provide four options (A, B, C, D) and indicate the correct answer and make it a well formatted and color correct answer with green.
+        
+    Output Format: 
+    Present the entire quiz in clear, readable Markdown with clear headings for each question type.
+    For multiple choice questions, format each option on its own line with a blank line before the options adding two spaces at the end of each line, like this:
+    
+    **Question 1:** What is...?
+
+
+    A) First option  
+
+
+    B) Second option  
+
+
+    C) Third option  
+
+
+    D) Fourth option  
+
+
+    **Correct Answer:** A) First option
+
+    For true/false questions, indicate the correct answer with **bold** formatting.
+    For short answer questions, write the correct answer with **bold** formatting.    
+    Use only standard Markdown formatting - no HTML tags or custom styling.
+    For all questions explain the correct answer in a separate paragraph after the question and why other options are incorrect.
+    Add a sperator line after each question to separate them clearly.
     """
