@@ -1117,7 +1117,7 @@ except Exception:
     st.info("Banner image not found. Please add banner2.png to the static/images directory.")
 
 # --- App Header ---
-st.title("AI Content Generator 🤖")
+st.title("RoboGarden Instructor Co-pilot🤖")
 st.write("Your creative partner for building amazing educational content!")
 
 # --- API Key Check and Model Initialization ---
