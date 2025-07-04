@@ -936,7 +936,7 @@ def process_pdf_inline_styles(pdf, line, indent, unicode_support=False, default_
 
 
 # Page Configuration
-st.set_page_config(layout="wide", page_title="RoboGarden AI Content Creator")
+st.set_page_config(layout="wide", page_title="RoboGarden Instructor Copilot")
 
 # --- Initialize Session State ---
 if 'generated_course_text' not in st.session_state:
@@ -1117,7 +1117,7 @@ except Exception:
     st.info("Banner image not found. Please add banner2.png to the static/images directory.")
 
 # --- App Header ---
-st.title("AI Content Generator 🤖")
+st.title("RoboGarden Instructor Co-pilot🤖")
 st.write("Your creative partner for building amazing educational content!")
 
 # --- API Key Check and Model Initialization ---
@@ -1144,7 +1144,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 
 # --- TAB 1: Course Architect ---
 with tab1:
-    st.header("Build a New Course from Scratch")
+    st.header("Build a New Course TOC from Scratch")
     st.markdown("Upload your raw materials (like lecture notes, articles, or a textbook chapter) and let the AI build a structured course for you.")
     
     col1, col2 = st.columns([1, 2]) # [sidebar_width, main_content_width]
