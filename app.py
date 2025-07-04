@@ -382,7 +382,7 @@ def process_pdf_inline_styles(pdf, line, indent):
         if not part: continue
         
         style = ''
-        font = 'Arial'
+        font = 'Helvetica'
         size = 12
         if part.startswith('**') and part.endswith('**'):
             content = part[2:-2]
@@ -410,7 +410,7 @@ def process_pdf_inline_styles(pdf, line, indent):
                 pdf.set_x(indent) # Re-apply indent for wrapped line
             pdf.write(5, word_to_write.encode('latin-1', 'replace').decode('latin-1'))
     
-    pdf.set_font('Arial', '', 12) # Reset font at the end of the line
+    pdf.set_font('Helvetica', '', 12) # Reset font at the end of the line
 
 def create_styled_pdf(text):
     """
@@ -422,9 +422,9 @@ def create_styled_pdf(text):
         pdf.add_page()
         
         # Simplified font handling - stick to built-in fonts
-        pdf.set_font('Arial', size=12)
+        pdf.set_font('Helvetica', size=12)
         unicode_support = False  # Disable Unicode to avoid font issues
-        default_font = 'Arial'
+        default_font = 'Helvetica'
         
         effective_page_width = pdf.w - 2 * pdf.l_margin
 
@@ -438,7 +438,7 @@ def create_styled_pdf(text):
                     pdf.set_fill_color(240, 240, 240)
                     pdf.ln(2)
                 else:
-                    pdf.set_font('Arial', size=12)
+                    pdf.set_font('Helvetica', size=12)
                     pdf.set_fill_color(255, 255, 255)
                     pdf.ln(5)
                 continue
@@ -458,17 +458,17 @@ def create_styled_pdf(text):
 
             # Safe text encoding for all content
             if line.startswith('# '):
-                pdf.set_font('Arial', 'B', 16)
+                pdf.set_font('Helvetica', 'B', 16)
                 safe_text = line[2:].strip().encode('latin-1', 'replace').decode('latin-1')
                 pdf.multi_cell(effective_page_width, 8, safe_text)
                 pdf.ln(4)
             elif line.startswith('## '):
-                pdf.set_font('Arial', 'B', 14)
+                pdf.set_font('Helvetica', 'B', 14)
                 safe_text = line[3:].strip().encode('latin-1', 'replace').decode('latin-1')
                 pdf.multi_cell(effective_page_width, 7, safe_text)
                 pdf.ln(3)
             elif line.startswith('### '):
-                pdf.set_font('Arial', 'B', 12)
+                pdf.set_font('Helvetica', 'B', 12)
                 safe_text = line[4:].strip().encode('latin-1', 'replace').decode('latin-1')
                 pdf.multi_cell(effective_page_width, 6, safe_text)
                 pdf.ln(2)
@@ -502,7 +502,7 @@ def process_pdf_inline_styles_safe(pdf, line, indent):
                 continue
             
             style = ''
-            font = 'Arial'
+            font = 'Helvetica'
             size = 12
             
             if part.startswith('**') and part.endswith('**'):
@@ -533,12 +533,12 @@ def process_pdf_inline_styles_safe(pdf, line, indent):
                     pdf.set_x(indent)
                 pdf.write(5, word_to_write)
         
-        pdf.set_font('Arial', '', 12)
+        pdf.set_font('Helvetica', '', 12)
         
     except Exception as e:
         # Fallback to simple text if styling fails
         safe_text = line.encode('latin-1', 'replace').decode('latin-1')
-        pdf.set_font('Arial', '', 12)
+        pdf.set_font('Helvetica', '', 12)
         pdf.multi_cell(pdf.w - 2 * pdf.l_margin, 5, safe_text)
 
 def create_fallback_pdf(text):
@@ -546,7 +546,7 @@ def create_fallback_pdf(text):
     try:
         pdf = FPDF()
         pdf.add_page()
-        pdf.set_font('Arial', size=12)
+        pdf.set_font('Helvetica', size=12)
         
         # Simple text conversion - remove markdown
         clean_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)  # Remove bold
@@ -582,7 +582,7 @@ def create_html_pdf(html_text):
         def __init__(self, pdf):
             super().__init__()
             self.pdf = pdf
-            self.font_stack = [('Arial', '', 12)]  # Stack to track font changes
+            self.font_stack = [('Helvetica', '', 12)]  # Stack to track font changes
             self.in_code = False
             self.in_pre = False
             self.list_stack = []  # Stack to track list types and levels
@@ -609,7 +609,7 @@ def create_html_pdf(html_text):
                 
                 level = int(tag[1])
                 size = max(16 - (level - 1) * 2, 10)
-                self.pdf.set_font('Arial', 'B', size)
+                self.pdf.set_font('Helvetica', 'B', size)
                 self.last_was_block_element = True
                 
             elif tag == 'p':
@@ -743,7 +743,7 @@ def create_html_pdf(html_text):
             
             if tag in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
                 self.pdf.ln(6)  # Space after headers
-                self.pdf.set_font('Arial', '', 12)  # Reset font
+                self.pdf.set_font('Helvetica', '', 12)  # Reset font
                 self.pdf.set_x(self.pdf.l_margin)  # Reset position
                 self.last_was_block_element = True
                 
@@ -765,7 +765,7 @@ def create_html_pdf(html_text):
             elif tag == 'pre':
                 self.in_pre = False
                 self.pdf.set_fill_color(255, 255, 255)  # Reset background
-                self.pdf.set_font('Arial', '', 12)  # Reset font
+                self.pdf.set_font('Helvetica', '', 12)  # Reset font
                 self.pdf.ln(6)  # Space after pre block
                 self.pdf.set_x(self.pdf.l_margin)  # Reset position
                 self.last_was_block_element = True
@@ -876,8 +876,8 @@ def create_html_pdf(html_text):
         default_font = 'DejaVu'
         unicode_support = True
     except:
-        # Fallback to Arial if Unicode fonts are not available
-        default_font = 'Arial'
+        # Fallback to Helvetica if Unicode fonts are not available
+        default_font = 'Helvetica'
         unicode_support = False
     
     pdf.set_font(default_font, size=12)
@@ -893,7 +893,7 @@ def create_html_pdf(html_text):
     pdf_fp.seek(0)
     return pdf_fp.getvalue()
 
-def process_pdf_inline_styles(pdf, line, indent, unicode_support=False, default_font='Arial'):
+def process_pdf_inline_styles(pdf, line, indent, unicode_support=False, default_font='Helvetica'):
     """Helper to process a line with inline markdown for PDF `write` method, handling wrapping."""
     parts = re.split(r'(\*\*.*?\*\*|\*.*?\*|\`.*?\`)', line)
     for part in parts:
