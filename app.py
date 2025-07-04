@@ -1185,38 +1185,6 @@ with tab1:
             else:
                 st.warning("Please upload at least one document to start building.")
 
-        # Quiz Creator Panel - Only show if course is generated
-        if st.session_state.generated_course_text:
-            st.markdown("---")
-            st.subheader("Quiz Creator 🧠")
-            
-            quiz_type = st.radio("Quiz Type:", 
-                               ["Multiple Choice", "True/False", "Short Answer", "Mixed"], 
-                               key="course_quiz_type")
-            
-            quiz_difficulty = st.radio("Difficulty Level:",
-                                     ["Easy", "Medium", "Hard", "Mixed"], 
-                                     key="course_quiz_difficulty")
-            
-            # Custom styling for quiz button
-            st.markdown('<div class="quiz-button">', unsafe_allow_html=True)
-            if st.button("🧠 Generate Quiz 🧠", use_container_width=True, key="course_quiz_button"):
-                with col2:
-                    with st.spinner("Crafting your quiz from the generated course... 📝"):
-                        try:
-                            prompt = prompt_utils.create_quiz_creator_prompt(
-                                st.session_state.generated_course_text, 
-                                difficulty_level=quiz_difficulty, 
-                                question_type=quiz_type
-                            )
-                            response = model.generate_content(prompt, request_options={'timeout': 600})
-                            st.session_state.generated_quiz_text = response.text
-                            print(st.session_state.generated_quiz_text)
-                        except Exception as e:
-                            st.error(f"An error occurred during quiz creation: {e}")
-                            st.session_state.generated_quiz_text = ""
-            st.markdown('</div>', unsafe_allow_html=True)                        
-    
     with col2:
         if not st.session_state.generated_course_text:
             st.info("Your generated course will appear here once you click the generate button.")
