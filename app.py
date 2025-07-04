@@ -1215,53 +1215,7 @@ with tab1:
                         except Exception as e:
                             st.error(f"An error occurred during quiz creation: {e}")
                             st.session_state.generated_quiz_text = ""
-            st.markdown('</div>', unsafe_allow_html=True)
-
-            # Display generated quiz if available
-            if st.session_state.generated_quiz_text:
-                st.markdown("---")
-                st.markdown(st.session_state.generated_quiz_text, unsafe_allow_html=True)
-                
-                # Quiz download buttons
-                if DOWNLOAD_ENABLED:
-                    quiz_params = {
-                        'audience': target_audience,
-                        'quiz_type': quiz_type,
-                        'difficulty': quiz_difficulty
-                    }
-                    
-                    quiz_dl_col_1, quiz_dl_col_2, quiz_dl_col_3 = st.columns([2,2,1])
-                    with quiz_dl_col_1:
-                        quiz_pdf_bytes = create_styled_pdf(st.session_state.generated_quiz_text)
-                        quiz_filename = create_descriptive_filename(
-                            "Quiz", 
-                            quiz_params, 
-                            st.session_state.generated_quiz_text, 
-                            "pdf"
-                        )
-                        st.download_button(
-                            label="⬇️ PDF",
-                            data=quiz_pdf_bytes,
-                            file_name=quiz_filename,
-                            mime="application/pdf",
-                            use_container_width=True
-                        )
-                    with quiz_dl_col_2:
-                        quiz_docx_bytes = create_styled_docx(st.session_state.generated_quiz_text)
-                        quiz_docx_filename = create_descriptive_filename(
-                            "Quiz", 
-                            quiz_params, 
-                            st.session_state.generated_quiz_text, 
-                            "docx"
-                        )
-                        st.download_button(
-                            label="⬇️ DOCX",
-                            data=quiz_docx_bytes,
-                            file_name=quiz_docx_filename,
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            use_container_width=True
-                        )
-            
+            st.markdown('</div>', unsafe_allow_html=True)                        
     
     with col2:
         if not st.session_state.generated_course_text:
@@ -1317,6 +1271,51 @@ with tab1:
                 st.session_state.generated_course_text = ""
                 st.session_state.generated_quiz_text = ""
                 st.rerun()
+
+            # Display generated quiz if available
+            if st.session_state.generated_quiz_text:
+                st.markdown("---")
+                st.markdown(st.session_state.generated_quiz_text, unsafe_allow_html=True)
+                
+            # Quiz download buttons
+            if DOWNLOAD_ENABLED:
+                quiz_params = {
+                    'audience': target_audience,
+                    'quiz_type': quiz_type,
+                    'difficulty': quiz_difficulty
+                }
+                
+                quiz_dl_col_1, quiz_dl_col_2, quiz_dl_col_3 = st.columns([2,2,1])
+                with quiz_dl_col_1:
+                    quiz_pdf_bytes = create_styled_pdf(st.session_state.generated_quiz_text)
+                    quiz_filename = create_descriptive_filename(
+                        "Quiz", 
+                        quiz_params, 
+                        st.session_state.generated_quiz_text, 
+                        "pdf"
+                    )
+                    st.download_button(
+                        label="⬇️ PDF",
+                        data=quiz_pdf_bytes,
+                        file_name=quiz_filename,
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                with quiz_dl_col_2:
+                    quiz_docx_bytes = create_styled_docx(st.session_state.generated_quiz_text)
+                    quiz_docx_filename = create_descriptive_filename(
+                        "Quiz", 
+                        quiz_params, 
+                        st.session_state.generated_quiz_text, 
+                        "docx"
+                    )
+                    st.download_button(
+                        label="⬇️ DOCX",
+                        data=quiz_docx_bytes,
+                        file_name=quiz_docx_filename,
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True
+                    )
 
 
 # --- TAB 2: Content Reviewer ---
@@ -1532,46 +1531,45 @@ with tab5:
             # Display the selected section
             st.markdown(st.session_state.course_sections[selected_section])
             
-            # Add download buttons if libraries are installed
-            if DOWNLOAD_ENABLED:
-                user_params = {
-                    'audience': st.session_state.get('gen_audience_2', 'General'),
-                    'length': st.session_state.get('gen_length_2', 'Standard'),
-                }
-                
-                # Determine if we're downloading the full course or a section
-                download_content = st.session_state.course_sections[selected_section]
-                section_name = selected_section.replace(" ", "_").replace(":", "")
-                
-                dl_col_1, dl_col_2 = st.columns(2)
-                with dl_col_1:
-                    pdf_bytes = create_styled_pdf(download_content)
-                    course_filename = create_descriptive_filename(
-                        section_name, 
-                        user_params, 
-                        download_content, 
-                        "pdf"
-                    )
-                    st.download_button(
-                        label=f"⬇️ Download {selected_section} as PDF",
-                        data=pdf_bytes,
-                        file_name=course_filename,
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
-                
-                with dl_col_2:
-                    docx_bytes = create_styled_docx(download_content)
-                    course_docx_filename = create_descriptive_filename(
-                        section_name, 
-                        user_params, 
-                        download_content, 
-                        "docx"
-                    )
-                    st.download_button(
-                        label=f"⬇️ Download {selected_section} as DOCX",
-                        data=docx_bytes,
-                        file_name=course_docx_filename,
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        use_container_width=True
-                    )
+            # Add download buttons
+            user_params = {
+                'audience': st.session_state.get('gen_audience_2', 'General'),
+                'length': st.session_state.get('gen_length_2', 'Standard'),
+            }
+            
+            # Determine if we're downloading the full course or a section
+            download_content = st.session_state.course_sections[selected_section]
+            section_name = selected_section.replace(" ", "_").replace(":", "")
+            
+            dl_col_1, dl_col_2 = st.columns(2)
+            with dl_col_1:
+                pdf_bytes = create_styled_pdf(download_content)
+                course_filename = create_descriptive_filename(
+                    section_name, 
+                    user_params, 
+                    download_content, 
+                    "pdf"
+                )
+                st.download_button(
+                    label=f"⬇️ Download {selected_section} as PDF",
+                    data=pdf_bytes,
+                    file_name=course_filename,
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            
+            with dl_col_2:
+                docx_bytes = create_styled_docx(download_content)
+                course_docx_filename = create_descriptive_filename(
+                    section_name, 
+                    user_params, 
+                    download_content, 
+                    "docx"
+                )
+                st.download_button(
+                    label=f"⬇️ Download {selected_section} as DOCX",
+                    data=docx_bytes,
+                    file_name=course_docx_filename,
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    use_container_width=True
+                )
