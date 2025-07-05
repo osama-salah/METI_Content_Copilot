@@ -213,8 +213,7 @@ def content_reviewer_tab(model):
             with st.spinner("Our expert is proofreading your course... 🧐"):
                 try:
                     # Extract text with formatting preserved (now contains markdown)
-                    formatted_text = extract_text_from_files([uploaded_file_val])  
-                    # print(f'formatted_text: {formatted_text}')                    
+                    formatted_text = extract_text_from_files([uploaded_file_val])                     
                     if formatted_text.strip():
                         st.session_state.original_content = formatted_text
                         prompt = prompt_utils.create_validation_prompt(formatted_text)
@@ -233,6 +232,7 @@ def content_reviewer_tab(model):
                             st.session_state.validation_issues = issues
                             st.session_state.selected_corrections = {i: False for i in range(len(issues))}
                             st.success("YEAAH! Validation complete.")
+                            st.session_state.corrected_content = None
                         except json.JSONDecodeError as e:
                             st.error(f"Could not parse validation results: {e}")
                             st.text("Raw response:")
@@ -243,24 +243,22 @@ def content_reviewer_tab(model):
                     st.error(f"An error occurred during validation: {e}")
         else:
             st.warning("Please upload a document to validate.")
-
-        # print(f'formatted_text: {formatted_text}')
     
     # Display validation results if available
-    if st.session_state.validation_issues:
+    if st.session_state.get('validation_issues', None):
         st.markdown("---")
         st.subheader("Validation Results")
         
         # Selection buttons
-        col1, col2, col3 = st.columns([1, 1, 2])
+        col1, col2, col3 = st.columns([1, 1, 4])
         with col1:
-            if st.button("Select All", key="select_all"):
+            if st.button("Select All", key="select_all", use_container_width=True):
                 for i in range(len(st.session_state.validation_issues)):
                     st.session_state.selected_corrections[i] = True
                 st.rerun()
         
         with col2:
-            if st.button("Select None", key="select_none"):
+            if st.button("Select None", key="select_none", use_container_width=True):
                 for i in range(len(st.session_state.validation_issues)):
                     st.session_state.selected_corrections[i] = False
                 st.rerun()
@@ -325,7 +323,7 @@ def content_reviewer_tab(model):
                 st.markdown("---")
         
         # Apply corrections button and debug toggle
-        col_apply, col_debug = st.columns([3, 1])
+        col_apply, col_debug = st.columns([5, 1])
         with col_apply:
             apply_clicked = st.button("🔧 Apply Selected Corrections 🔧", use_container_width=True, key="apply_corrections")
         with col_debug:
@@ -485,7 +483,7 @@ def content_reviewer_tab(model):
                 st.warning("Please select at least one correction to apply.")
     
     # Display corrected content if available
-    if 'corrected_content' in st.session_state:
+    if st.session_state.get('corrected_content', None):
         st.markdown("---")
         st.subheader("Corrected Content")
         

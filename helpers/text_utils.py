@@ -27,7 +27,6 @@ def extract_text_from_files(uploaded_files):
                         page = pdf_document[page_num]
                         # Extract text with formatting information
                         page_text = extract_formatted_text_from_pdf_page(page)
-                        print(f'page_text: {page_text}')
                         if page_text:
                             full_text += page_text + "\n\n"
                     pdf_document.close()
