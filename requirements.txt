@@ -13,3 +13,4 @@ python-dotenv
 PyPDF2
 python-docx
 fpdf2
+pymupdf

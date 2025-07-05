@@ -28,7 +28,22 @@ def create_validation_prompt(course_text):
     {course_text}
     ---
     Your Task: Review the course for pedagogical soundness (clarity, cognitive load, engagement), style/tone consistency, and inclusivity.
-    Output Format: Present your findings in a Markdown table with three columns: "Issue Detected (with quote)", "Explanation", and "Suggested Correction".
+    
+    IMPORTANT: Return your response as a JSON array of objects, where each object has these exact fields:
+    - "original_text": The exact text from the course that has the issue (quoted exactly)
+    - "explanation": Your explanation of why this is an issue
+    - "suggested_correction": Your suggested improvement or correction
+    
+    Example format:
+    [
+        {{
+            "original_text": "This is confusing text from the course",
+            "explanation": "This sentence is unclear because...",
+            "suggested_correction": "This should be rewritten as: 'Clear version of the text'"
+        }}
+    ]
+    
+    Return only the JSON array, no other text or markdown formatting.
     """
 
 def create_updater_prompt(course_text):
